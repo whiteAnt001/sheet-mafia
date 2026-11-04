@@ -1,0 +1,521 @@
+<!doctype html>
+<html lang="ko">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>2026_4분기_업무일정.xlsx</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Crect width='16' height='16' rx='2' fill='%23217346'/%3E%3Cpath d='M4 4h8v8H4zM4 8h8M8 4v8' fill='none' stroke='white' stroke-width='1'/%3E%3C/svg%3E">
+    <style>
+        * { box-sizing: border-box; }
+        [hidden] { display: none !important; }
+        html, body { margin: 0; height: 100%; font-family: 'Malgun Gothic', '맑은 고딕', -apple-system, sans-serif; font-size: 13px; color: #222; background: #fff; }
+        #app { display: flex; flex-direction: column; height: 100vh; }
+
+        .titlebar { background: #217346; color: #fff; height: 32px; display: flex; align-items: center; justify-content: space-between; padding: 0 12px; font-size: 12px; }
+        .menu { background: #217346; color: #fff; display: flex; gap: 18px; padding: 2px 12px 6px; font-size: 12px; }
+        .menu span { padding-bottom: 2px; cursor: default; }
+        .menu span.on { border-bottom: 2px solid #fff; }
+
+        .ribbon { background: #f3f2f1; border-bottom: 1px solid #d1d1d1; display: flex; padding: 6px 4px; height: 76px; }
+        .group { display: flex; flex-direction: column; justify-content: space-between; padding: 0 10px; border-right: 1px solid #ddd; }
+        .group .items { display: flex; gap: 3px; align-items: center; }
+        .group .label { font-size: 11px; color: #777; text-align: center; }
+        .rb { background: transparent; border: 1px solid transparent; padding: 3px 6px; font: inherit; font-size: 12px; cursor: pointer; border-radius: 2px; color: #333; }
+        .rb:hover { background: #e1dfdd; border-color: #c8c6c4; }
+        .rb.box { border-color: #c8c6c4; background: #fff; min-width: 54px; text-align: left; }
+        .rb.primary { color: #217346; font-weight: bold; }
+
+        .formula { display: flex; align-items: center; border-bottom: 1px solid #d4d4d4; height: 28px; }
+        .namebox { width: 90px; border-right: 1px solid #d4d4d4; padding: 0 6px; height: 100%; display: flex; align-items: center; font-size: 12px; }
+        .fx { width: 40px; text-align: center; color: #888; font-style: italic; border-right: 1px solid #d4d4d4; height: 100%; line-height: 28px; }
+        #fxInput { flex: 1; border: 0; outline: 0; height: 100%; padding: 0 8px; font: inherit; background: transparent; }
+
+        .grid-wrap { flex: 1; overflow: auto; }
+        table.sheet { border-collapse: collapse; table-layout: fixed; }
+        .sheet th { background: #f3f3f3; color: #555; font-weight: normal; border: 1px solid #d4d4d4; height: 22px; font-size: 12px; }
+        .sheet th.corner, .sheet th.rowh { width: 40px; }
+        .sheet td { border: 1px solid #e3e3e3; height: 22px; padding: 0 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .sheet .col-A { width: 56px; }  .sheet .col-B { width: 90px; } .sheet .col-C { width: 380px; }
+        .sheet .col-D { width: 24px; }  .sheet .col-E { width: 110px; } .sheet .col-F { width: 80px; }
+        .sheet .col-G { width: 50px; }  .sheet .col-H { width: 80px; } .sheet .col-I { width: 24px; }
+        .sheet .col-J { width: 80px; }  .sheet .col-K { width: 120px; }
+        .sheet .fcol { width: 110px; }
+
+        td.hdr { font-weight: bold; background: #ddebf7; }
+        td.sys { color: #7f7f7f; font-style: italic; }
+        td.info { color: #2f5597; }
+        td.dead { color: #a6a6a6; text-decoration: line-through; background: #f5f5f5; }
+        td.num { text-align: right; color: #555; }
+        td.key { background: #f2f2f2; }
+        .cellbtn { font: inherit; font-size: 11px; padding: 0 6px; height: 18px; border: 1px solid #bfbfbf; background: #fff; cursor: pointer; }
+        .cellbtn:hover { background: #e9f2fb; }
+        .cellbtn.picked { border-color: #217346; color: #217346; font-weight: bold; }
+
+        .tabs { display: flex; align-items: stretch; background: #f3f2f1; border-top: 1px solid #d4d4d4; height: 28px; padding-left: 40px; }
+        .tab { padding: 0 16px; display: flex; align-items: center; cursor: pointer; font-size: 12px; color: #333; }
+        .tab.active { background: #fff; color: #217346; font-weight: bold; border-bottom: 2px solid #217346; }
+        .tab.unread::after { content: '•'; color: #217346; margin-left: 4px; }
+
+        .statusbar { background: #f3f2f1; height: 24px; display: flex; justify-content: space-between; align-items: center; padding: 0 12px; font-size: 11px; color: #444; border-top: 1px solid #e1e1e1; }
+
+        .dialog-bg { position: fixed; inset: 0; background: rgba(0,0,0,.15); display: flex; align-items: center; justify-content: center; }
+        .dialog { background: #fff; border: 1px solid #8a8a8a; width: 320px; box-shadow: 0 4px 16px rgba(0,0,0,.25); }
+        .dialog .dh { background: #f3f3f3; padding: 6px 10px; font-size: 12px; border-bottom: 1px solid #ddd; }
+        .dialog .db { padding: 14px 12px; display: flex; gap: 8px; align-items: center; font-size: 12px; }
+        .dialog .db input { flex: 1; font: inherit; padding: 3px 5px; border: 1px solid #8a8a8a; }
+        .dialog .df { padding: 0 12px 12px; text-align: right; }
+        .dialog .df button { font: inherit; font-size: 12px; padding: 3px 18px; border: 1px solid #8a8a8a; background: #f3f3f3; cursor: pointer; }
+
+        .toast { position: fixed; top: 140px; left: 50%; transform: translateX(-50%); background: #fffbe6; border: 1px solid #c9a227; padding: 6px 12px; font-size: 12px; z-index: 10; }
+
+        @media (max-width: 700px) { .ribbon, .menu { display: none; } }
+    </style>
+</head>
+<body>
+<div id="app">
+    <div class="titlebar">
+        <span id="docTitle">2026_4분기_업무일정.xlsx - 저장됨</span>
+        <span id="userName"></span>
+    </div>
+    <div class="menu">
+        <span>파일</span><span class="on">홈</span><span>삽입</span><span>페이지 레이아웃</span>
+        <span>수식</span><span>데이터</span><span>검토</span><span>보기</span>
+    </div>
+    <div class="ribbon">
+        <div class="group"><div class="items"><button class="rb">붙여넣기</button><button class="rb">잘라내기</button></div><div class="label">클립보드</div></div>
+        <div class="group"><div class="items"><button class="rb box">맑은 고딕 ▾</button><button class="rb box" style="min-width:36px">11 ▾</button><button class="rb"><b>가</b></button><button class="rb"><i>가</i></button><button class="rb"><u>가</u></button></div><div class="label">글꼴</div></div>
+        <div class="group"><div class="items"><button class="rb">≡</button><button class="rb">≡</button><button class="rb">≡</button><button class="rb">병합</button></div><div class="label">맞춤</div></div>
+        <div class="group"><div class="items"><button class="rb box">일반 ▾</button><button class="rb">%</button><button class="rb">,</button></div><div class="label">표시 형식</div></div>
+        <div class="group"><div class="items"><button class="rb primary" id="startBtn" hidden>▶ 게임 시작</button><button class="rb" id="shareBtn">초대 링크</button></div><div class="label">게임</div></div>
+    </div>
+    <div class="formula">
+        <div class="namebox" id="nameBox">C2</div>
+        <div class="fx">fx</div>
+        <input id="fxInput" autocomplete="off" spellcheck="false">
+    </div>
+    <div class="grid-wrap">
+        <table class="sheet" id="grid"></table>
+        <table class="sheet" id="fake" hidden></table>
+    </div>
+    <div class="tabs">
+        <div class="tab active" data-ch="main">전체</div>
+        <div class="tab" data-ch="mafia" id="mafiaTab" hidden>마피아</div>
+        <div class="tab">Sheet3</div>
+        <div class="tab">+</div>
+    </div>
+    <div class="statusbar"><span id="statusLeft">준비</span><span id="statusRight"></span></div>
+</div>
+
+<div class="dialog-bg" id="dialog">
+    <div class="dialog">
+        <div class="dh">닉네임 입력</div>
+        <div class="db"><label for="nameInput">닉네임:</label><input id="nameInput" maxlength="12"></div>
+        <div class="df"><button id="nameOk">입장</button></div>
+    </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+<script>
+    (() => {
+      const ROLE = { MAFIA: '마피아', POLICE: '경찰', DOCTOR: '의사', CITIZEN: '시민' };
+      const PHASE = { WAITING: '대기 중', NIGHT: '밤', DAY_DISCUSS: '낮 토론', DAY_VOTE: '투표', END: '게임 종료' };
+      const COLS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K'];
+      const ROWS = 32;
+      const MAIN_TITLE = '2026_4분기_업무일정.xlsx';
+      const FAKE_TITLE = '2026_4분기_실적보고.xlsx';
+
+      const $ = (id) => document.getElementById(id);
+      const safe = (fn, fallback = null) => { try { return fn(); } catch (e) { return fallback; } };
+
+      // pid는 탭 단위(sessionStorage) -> 새로고침해도 같은 플레이어, 탭 여러 개로 테스트 가능
+      const genId = () => (window.crypto && crypto.randomUUID)
+        ? crypto.randomUUID()
+        : 'p-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 12);
+      let pid = safe(() => sessionStorage.getItem('sm-pid'));
+      if (!pid) { pid = genId(); safe(() => sessionStorage.setItem('sm-pid', pid)); }
+
+      const params = new URLSearchParams(location.search);
+      let roomId = params.get('room');
+      if (!roomId || !/^[a-zA-Z0-9-]{1,32}$/.test(roomId)) {
+        roomId = Math.random().toString(36).slice(2, 10);
+        history.replaceState(null, '', '?room=' + roomId);
+      }
+
+      let client = null;
+      let state = null;
+      let me = { id: null, role: null, team: [] };
+      let myPick = null;
+      let phaseKey = null;
+      let channel = 'main';
+      let mafiaUnread = false;
+      let fakeOn = false;
+      const logs = { main: [], mafia: [] };
+      const tds = {};
+
+      /* ---------- 그리드 ---------- */
+      function th(text, cls) {
+        const el = document.createElement('th');
+        el.textContent = text;
+        if (cls) el.className = cls;
+        return el;
+      }
+
+      function buildGrid() {
+        const table = $('grid');
+        const head = document.createElement('tr');
+        head.appendChild(th('', 'corner'));
+        COLS.forEach(c => head.appendChild(th(c, 'col-' + c)));
+        table.appendChild(head);
+        for (let r = 1; r <= ROWS; r++) {
+          const tr = document.createElement('tr');
+          tr.appendChild(th(String(r), 'rowh'));
+          tds[r] = {};
+          COLS.forEach(c => {
+            const td = document.createElement('td');
+            td.className = 'col-' + c;
+            tr.appendChild(td);
+            tds[r][c] = td;
+          });
+          table.appendChild(tr);
+        }
+      }
+
+      function buildFake() {
+        const table = $('fake');
+        const fcols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+        const titles = ['부서', '10월', '11월', '12월', '4분기 합계', '목표', '달성률', '비고'];
+        const depts = ['영업1팀', '영업2팀', '마케팅팀', '개발팀', '인사팀', '재무팀', '구매팀', '품질팀', '물류팀', 'CS팀'];
+        const head = document.createElement('tr');
+        head.appendChild(th('', 'corner'));
+        fcols.forEach(c => head.appendChild(th(c, 'fcol')));
+        table.appendChild(head);
+        for (let r = 1; r <= 40; r++) {
+          const tr = document.createElement('tr');
+          tr.appendChild(th(String(r), 'rowh'));
+          const m = [0, 0, 0].map(() => Math.floor(1200 + Math.random() * 8600) * 1000);
+          const sum = m[0] + m[1] + m[2];
+          const target = Math.floor(sum * (0.85 + Math.random() * 0.35) / 1000) * 1000;
+          const row = r === 1 ? titles : [
+            depts[(r - 2) % depts.length] + (r > 11 ? ' (' + (Math.floor((r - 2) / depts.length) + 1) + '본부)' : ''),
+            m[0].toLocaleString(), m[1].toLocaleString(), m[2].toLocaleString(),
+            sum.toLocaleString(), target.toLocaleString(), (sum / target * 100).toFixed(1) + '%', ''
+          ];
+          row.forEach((v, i) => {
+            const td = document.createElement('td');
+            td.textContent = v;
+            td.className = r === 1 ? 'hdr' : (i > 0 ? 'num' : '');
+            tr.appendChild(td);
+          });
+          table.appendChild(tr);
+        }
+      }
+
+      function setCell(r, c, text, cls) {
+        const td = tds[r] && tds[r][c];
+        if (!td) return null;
+        td.textContent = text == null ? '' : String(text);
+        if (cls) cls.split(' ').filter(Boolean).forEach(x => td.classList.add(x));
+        return td;
+      }
+
+      function clearCells() {
+        for (let r = 1; r <= ROWS; r++) {
+          COLS.forEach(c => { const td = tds[r][c]; td.textContent = ''; td.className = 'col-' + c; td.title = ''; });
+        }
+      }
+
+      const fmtTime = (ms) => {
+        const d = new Date(ms || Date.now());
+        return String(d.getHours()).padStart(2, '0') + ':' + String(d.getMinutes()).padStart(2, '0');
+      };
+
+      function myPlayer() {
+        return state ? state.players.find(p => p.id === me.id) : null;
+      }
+
+      function canPick(p) {
+        const mine = myPlayer();
+        if (!state || !mine || !mine.alive || !p.alive) return false;
+        if (state.phase === 'DAY_VOTE') return p.id !== me.id;
+        if (state.phase === 'NIGHT') {
+          if (me.role === 'MAFIA') return !me.team.includes(p.id);
+          if (me.role === 'DOCTOR') return true;
+          if (me.role === 'POLICE') return p.id !== me.id;
+        }
+        return false;
+      }
+
+      function pickLabel() {
+        if (state.phase === 'DAY_VOTE') return '투표';
+        if (me.role === 'MAFIA') return '공격';
+        if (me.role === 'DOCTOR') return '치료';
+        if (me.role === 'POLICE') return '조사';
+        return '지목';
+      }
+
+      function render() {
+        clearCells();
+
+        ['시간', '이름', '내용'].forEach((t, i) => setCell(1, COLS[i], t, 'hdr'));
+        [['E', '플레이어'], ['F', '상태'], ['G', '득표'], ['H', '지목']].forEach(([c, t]) => setCell(1, c, t, 'hdr'));
+        setCell(1, 'J', '항목', 'hdr');
+        setCell(1, 'K', '값', 'hdr');
+
+        const lines = logs[channel].slice(-(ROWS - 1));
+        lines.forEach((l, i) => {
+          const r = i + 2;
+          setCell(r, 'A', fmtTime(l.at), 'num');
+          setCell(r, 'B', l.from, l.kind);
+          const td = setCell(r, 'C', l.text, l.kind);
+          if (td) td.title = l.text;
+        });
+
+        if (state) {
+          state.players.forEach((p, i) => {
+            const r = i + 2;
+            if (r > ROWS) return;
+            const dead = p.alive ? '' : 'dead';
+            setCell(r, 'E', p.nickname + (p.id === me.id ? ' (나)' : '') + (p.id === state.hostId ? ' (방장)' : ''), dead);
+            let status = p.alive ? (p.connected ? '생존' : '연결 끊김') : '사망';
+            if (state.phase === 'END' && p.role) status = ROLE[p.role];
+            setCell(r, 'F', status, dead);
+            const votes = state.voteCounts ? state.voteCounts[p.id] : null;
+            setCell(r, 'G', votes ? votes : '', 'num');
+            if (canPick(p)) {
+              const label = pickLabel();
+              const btn = document.createElement('button');
+              btn.className = 'cellbtn' + (myPick === p.id ? ' picked' : '');
+              btn.textContent = myPick === p.id ? '✔ ' + label : label;
+              btn.onclick = () => pick(p.id);
+              tds[r]['H'].appendChild(btn);
+            }
+          });
+
+          const alive = state.players.filter(p => p.alive).length;
+          const info = [
+            ['단계', PHASE[state.phase] || state.phase],
+            ['날짜', state.day ? state.day + '일차' : '-'],
+            ['남은 시간', ''],
+            ['내 직업', me.role ? ROLE[me.role] : '-'],
+            ['생존자', alive + ' / ' + state.players.length]
+          ];
+          if (me.role === 'MAFIA' && me.team.length > 1) {
+            const names = state.players.filter(p => me.team.includes(p.id) && p.id !== me.id).map(p => p.nickname);
+            info.push(['마피아 동료', names.join(', ')]);
+          }
+          if (state.phase === 'END' && state.winner) {
+            info.push(['결과', state.winner === 'MAFIA' ? '마피아 승리' : '시민 승리']);
+          }
+          info.forEach(([k, v], i) => {
+            setCell(i + 2, 'J', k, 'key');
+            setCell(i + 2, 'K', v);
+          });
+        }
+
+        updateTimer();
+        renderChrome();
+      }
+
+      function updateTimer() {
+        if (!tds[4]) return;
+        let text = '-';
+        if (state && state.phaseEndsAt > 0) {
+          const left = Math.max(0, Math.floor((state.phaseEndsAt - Date.now()) / 1000));
+          text = String(Math.floor(left / 60)).padStart(2, '0') + ':' + String(left % 60).padStart(2, '0');
+        }
+        tds[4]['K'].textContent = state ? text : '';
+      }
+
+      function renderChrome() {
+        const isHost = state && state.hostId === me.id;
+        $('startBtn').hidden = !(isHost && (state.phase === 'WAITING' || state.phase === 'END'));
+        $('startBtn').textContent = state && state.phase === 'END' ? '▶ 다시 시작' : '▶ 게임 시작';
+
+        const isMafia = me.role === 'MAFIA';
+        $('mafiaTab').hidden = !isMafia;
+        if (!isMafia && channel === 'mafia') channel = 'main';
+        document.querySelectorAll('.tab[data-ch]').forEach(t => {
+          t.classList.toggle('active', t.dataset.ch === channel);
+        });
+        $('mafiaTab').classList.toggle('unread', mafiaUnread && channel !== 'mafia');
+
+        $('nameBox').textContent = 'C' + Math.min(logs[channel].length + 2, ROWS);
+        if (!fakeOn) {
+          $('fxInput').placeholder = channel === 'mafia' ? '마피아끼리 대화 (Enter로 전송)' : '채팅 입력 (Enter로 전송)';
+        }
+        $('statusLeft').textContent = state ? (state.phase === 'WAITING' ? '준비' : PHASE[state.phase]) : '연결 중...';
+        $('statusRight').textContent = state ? '참가자: ' + state.players.length + '명   100%' : '';
+      }
+
+      /* ---------- 위장 ---------- */
+      function setFake(on) {
+        if (fakeOn === on) return;
+        fakeOn = on;
+        $('grid').hidden = on;
+        $('fake').hidden = !on;
+        document.title = on ? FAKE_TITLE : MAIN_TITLE;
+        $('docTitle').textContent = (on ? FAKE_TITLE : MAIN_TITLE) + ' - 저장됨';
+        const fx = $('fxInput');
+        fx.readOnly = on;
+        fx.value = on ? '=SUM(B2:D40)' : '';
+        fx.placeholder = '';
+        if (on) {
+          $('nameBox').textContent = 'E2';
+          fx.blur();
+        } else {
+          renderChrome();
+        }
+      }
+
+      /* ---------- 통신 ---------- */
+      function send(action, body) {
+        if (!client || !client.connected) return;
+        client.publish({ destination: '/app/room/' + roomId + '/' + action, body: JSON.stringify(body || {}) });
+      }
+
+      function pushLog(ch, entry) {
+        logs[ch].push(entry);
+        if (logs[ch].length > 200) logs[ch].splice(0, logs[ch].length - 200);
+      }
+
+      function onPublic(msg) {
+        const d = msg.data || {};
+        switch (msg.type) {
+          case 'STATE': {
+            const key = d.phase + ':' + d.day;
+            if (key !== phaseKey) { phaseKey = key; myPick = null; }
+            state = d;
+            break;
+          }
+          case 'CHAT':
+            pushLog('main', { at: d.at, from: d.from, text: d.text, kind: '' });
+            break;
+          case 'SYSTEM':
+            pushLog('main', { at: d.at, from: '시스템', text: d.text, kind: 'sys' });
+            break;
+          case 'BOSS_ALERT':
+            setFake(true);
+            return;
+        }
+        render();
+      }
+
+      function onPrivate(msg) {
+        const d = msg.data || {};
+        switch (msg.type) {
+          case 'SYNC':
+            me = { id: d.myId, role: d.role, team: d.team || [] };
+            break;
+          case 'MAFIA_CHAT':
+            pushLog('mafia', { at: d.at, from: d.from, text: d.text, kind: d.system ? 'sys' : '' });
+            if (channel !== 'mafia') mafiaUnread = true;
+            break;
+          case 'INFO':
+            pushLog('main', { at: d.at, from: '알림', text: d.text, kind: 'info' });
+            break;
+          case 'ERROR':
+            toast(d.text);
+            return;
+        }
+        render();
+      }
+
+      function connect(nickname) {
+        client = new StompJs.Client({
+          webSocketFactory: () => new SockJS('/ws'),
+          connectHeaders: { pid },
+          reconnectDelay: 3000,
+          onConnect: () => {
+            client.subscribe('/user/queue/private', f => onPrivate(JSON.parse(f.body)));
+            client.subscribe('/topic/room/' + roomId, f => onPublic(JSON.parse(f.body)));
+            send('join', { nickname });
+          },
+          onWebSocketClose: () => { $('statusLeft').textContent = '연결 끊김 - 재연결 중...'; }
+        });
+        client.activate();
+      }
+
+      function pick(targetId) {
+        if (!state) return;
+        myPick = targetId;
+        send(state.phase === 'NIGHT' ? 'night' : 'vote', { target: targetId });
+        render();
+      }
+
+      let toastTimer = null;
+      function toast(text) {
+        const el = $('toast');
+        el.textContent = text;
+        el.hidden = false;
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => { el.hidden = true; }, 2500);
+      }
+
+      /* ---------- 이벤트 ---------- */
+      $('fxInput').addEventListener('keydown', e => {
+        if (e.key !== 'Enter' || e.isComposing || e.keyCode === 229 || fakeOn) return;
+        const text = e.target.value.trim();
+        if (!text) return;
+        send(channel === 'mafia' ? 'mafia-chat' : 'chat', { content: text });
+        e.target.value = '';
+      });
+
+      document.querySelectorAll('.tab[data-ch]').forEach(t => {
+        t.addEventListener('click', () => {
+          if (fakeOn) return;
+          channel = t.dataset.ch;
+          if (channel === 'mafia') mafiaUnread = false;
+          render();
+        });
+      });
+
+      $('startBtn').addEventListener('click', () => send('start'));
+
+      $('shareBtn').addEventListener('click', async () => {
+        try {
+          await navigator.clipboard.writeText(location.href);
+          toast('초대 링크가 복사되었습니다.');
+        } catch (e) {
+          toast(location.href);
+        }
+      });
+
+      // ESC: 내 화면 + 방 전체를 실적 시트로 전환 / 다시 ESC: 내 화면만 복귀
+      document.addEventListener('keydown', e => {
+        if (e.key !== 'Escape' || !$('dialog').hidden) return;
+        e.preventDefault();
+        if (fakeOn) {
+          setFake(false);
+        } else {
+          setFake(true);
+          send('boss');
+        }
+      });
+
+      function submitName() {
+        const name = $('nameInput').value.trim();
+        if (!name) return;
+        safe(() => localStorage.setItem('sm-name', name));
+        $('userName').textContent = name;
+        $('dialog').hidden = true;
+        connect(name);
+        $('fxInput').focus();
+      }
+      $('nameOk').addEventListener('click', submitName);
+      $('nameInput').addEventListener('keydown', e => {
+        if (e.key === 'Enter' && !e.isComposing && e.keyCode !== 229) submitName();
+      });
+
+      /* ---------- 시작 ---------- */
+      buildGrid();
+      buildFake();
+      render();
+      setInterval(updateTimer, 1000);
+      $('nameInput').value = safe(() => localStorage.getItem('sm-name')) || '';
+      $('nameInput').focus();
+    })();
+</script>
+</body>
+</html>
