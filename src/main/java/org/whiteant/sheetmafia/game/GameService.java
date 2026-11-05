@@ -28,6 +28,8 @@ public class GameService {
     private final int nightSeconds;
     private final int discussSeconds;
     private final int voteSeconds;
+    private final int defenseSeconds;
+    private final int finalVoteSeconds;
     private final int minPlayers;
     private final int maxPlayers;
 
@@ -42,6 +44,8 @@ public class GameService {
                        @Value("${game.night-seconds:60}") int nightSeconds,
                        @Value("${game.discuss-seconds:180}") int discussSeconds,
                        @Value("${game.vote-seconds:60}") int voteSeconds,
+                       @Value("${game.defense-seconds:30}") int defenseSeconds,
+                       @Value("${game.final-vote-seconds:20}") int finalVoteSeconds,
                        @Value("${game.min-players:4}") int minPlayers,
                        @Value("${game.max-players:8}") int maxPlayers) {
         this.messaging = messaging;
@@ -49,11 +53,14 @@ public class GameService {
         this.nightSeconds = nightSeconds;
         this.discussSeconds = discussSeconds;
         this.voteSeconds = voteSeconds;
+        this.defenseSeconds = defenseSeconds;
+        this.finalVoteSeconds = finalVoteSeconds;
         this.minPlayers = minPlayers;
         this.maxPlayers = maxPlayers;
     }
 
     // 클라이언트 요청
+
     public void join(String roomId, String pid, String sessionId, String rawNickname) {
         validateRoomId(roomId);
         String nickname = rawNickname == null ? "" : rawNickname.strip();
@@ -113,6 +120,8 @@ public class GameService {
             room.setDay(1);
             room.setWinner(null);
             room.getVotes().clear();
+            room.getFinalVotes().clear();
+            room.setAccusedId(null);
             system(room, "게임이 시작되었습니다. 자신의 직업을 확인하세요.");
             room.getPlayers().values().forEach(p -> sendSync(room, p));
             startNight(room);
@@ -125,10 +134,13 @@ public class GameService {
             Player player = getPlayer(room, pid);
             String text = cleanText(content);
             if (isInGame(room) && !player.isAlive()) {
-                throw new GameException("죽은 플레이어는 채팅할 수 없습니다.");
+                throw new GameException("죽은 플레이어는 사망자 탭에서만 채팅할 수 있습니다.");
             }
             if (room.getPhase() == Phase.NIGHT) {
                 throw new GameException("밤에는 채팅할 수 없습니다.");
+            }
+            if (room.getPhase() == Phase.DEFENSE && !player.getId().equals(room.getAccusedId())) {
+                throw new GameException("최후의 변론 중에는 지목된 사람만 발언할 수 있습니다.");
             }
             broadcast(room, "CHAT", Map.of(
                     "from", player.getNickname(),
@@ -146,9 +158,21 @@ public class GameService {
                 throw new GameException("마피아만 사용할 수 있는 채팅입니다.");
             }
             if (!player.isAlive()) {
-                throw new GameException("죽은 플레이어는 채팅할 수 없습니다.");
+                throw new GameException("죽은 플레이어는 사망자 탭에서만 채팅할 수 있습니다.");
             }
             sendToMafia(room, player.getNickname(), text, false);
+        }
+    }
+
+    public void deadChat(String roomId, String pid, String content) {
+        Room room = getRoom(roomId);
+        synchronized (room) {
+            Player player = getPlayer(room, pid);
+            String text = cleanText(content);
+            if (player.isAlive() || player.getRole() == null || room.getPhase() == Phase.WAITING) {
+                throw new GameException("사망자만 사용할 수 있는 채팅입니다.");
+            }
+            sendToDead(room, player.getNickname(), text, false);
         }
     }
 
@@ -215,6 +239,32 @@ public class GameService {
             room.getVotes().put(pid, target.getId());
             if (room.getVotes().size() >= room.alivePlayers().size()) {
                 endVote(room);
+            } else {
+                broadcastState(room);
+            }
+        }
+    }
+
+    public void finalVote(String roomId, String pid, Boolean agree) {
+        Room room = getRoom(roomId);
+        synchronized (room) {
+            if (room.getPhase() != Phase.FINAL_VOTE) {
+                throw new GameException("지금은 찬반 투표 시간이 아닙니다.");
+            }
+            if (agree == null) {
+                throw new GameException("찬성 또는 반대를 선택해주세요.");
+            }
+            Player player = getPlayer(room, pid);
+            if (!player.isAlive()) {
+                throw new GameException("죽은 플레이어는 투표할 수 없습니다.");
+            }
+            if (player.getId().equals(room.getAccusedId())) {
+                throw new GameException("지목된 사람은 찬반 투표에 참여할 수 없습니다.");
+            }
+
+            room.getFinalVotes().put(pid, agree);
+            if (room.getFinalVotes().size() >= room.alivePlayers().size() - 1) {
+                endFinalVote(room);
             } else {
                 broadcastState(room);
             }
@@ -289,7 +339,7 @@ public class GameService {
         Player victim = room.findById(targetId).orElse(null);
 
         if (victim != null && victim.isAlive() && !targetId.equals(room.getDoctorTarget())) {
-            victim.setAlive(false);
+            kill(room, victim);
             system(room, "밤사이 마피아의 공격으로 " + victim.getNickname() + "님이 사망했습니다.");
         } else {
             system(room, "밤사이 아무도 죽지 않았습니다.");
@@ -330,20 +380,65 @@ public class GameService {
             }
         }
 
-        if (top == null || tie) {
-            system(room, "동표이거나 투표가 없어 아무도 처형되지 않았습니다.");
-        } else {
-            room.findById(top).ifPresent(t -> {
-                t.setAlive(false);
-                system(room, t.getNickname() + "님이 투표로 처형되었습니다.");
-            });
+        Player accused = (top == null || tie) ? null : room.findById(top).filter(Player::isAlive).orElse(null);
+        if (accused == null) {
+            system(room, "동표이거나 투표가 없어 아무도 지목되지 않았습니다.");
+            nextNight(room);
+            return;
+        }
+        startDefense(room, accused);
+    }
+
+    private void startDefense(Room room, Player accused) {
+        room.setAccusedId(accused.getId());
+        room.getFinalVotes().clear();
+        enterPhase(room, Phase.DEFENSE, defenseSeconds, this::startFinalVote);
+        system(room, "투표 결과 " + accused.getNickname() + "님이 지목되었습니다. 최후의 변론을 시작합니다.");
+    }
+
+    private void startFinalVote(Room room) {
+        Player accused = room.findById(room.getAccusedId()).filter(Player::isAlive).orElse(null);
+        if (accused == null) {
+            room.setAccusedId(null);
+            nextNight(room);
+            return;
+        }
+        room.getFinalVotes().clear();
+        enterPhase(room, Phase.FINAL_VOTE, finalVoteSeconds, this::endFinalVote);
+        system(room, accused.getNickname() + "님의 처형에 찬성 또는 반대를 선택하세요.");
+    }
+
+    private void endFinalVote(Room room) {
+        long yes = room.getFinalVotes().values().stream().filter(Boolean::booleanValue).count();
+        long no = room.getFinalVotes().size() - yes;
+        Player accused = room.findById(room.getAccusedId()).orElse(null);
+        room.setAccusedId(null);
+        room.getFinalVotes().clear();
+
+        if (accused != null && accused.isAlive()) {
+            String result = "찬성 " + yes + "표, 반대 " + no + "표로 ";
+            if (yes > no) {
+                kill(room, accused);
+                system(room, result + accused.getNickname() + "님이 처형되었습니다.");
+            } else {
+                system(room, result + accused.getNickname() + "님은 처형을 면했습니다.");
+            }
         }
 
         if (checkWin(room)) {
             return;
         }
+        nextNight(room);
+    }
+
+    private void nextNight(Room room) {
         room.setDay(room.getDay() + 1);
         startNight(room);
+    }
+
+    private void kill(Room room, Player player) {
+        player.setAlive(false);
+        sendToDead(room, "시스템", player.getNickname() + "님이 사망자 채팅에 합류했습니다.", true);
     }
 
     private boolean checkWin(Room room) {
@@ -366,6 +461,7 @@ public class GameService {
         room.setPhase(Phase.END);
         room.setPhaseSeq(room.getPhaseSeq() + 1);
         room.setPhaseEndsAt(0);
+        room.setAccusedId(null);
         system(room, winner == Role.MAFIA
                 ? "마피아 팀이 승리했습니다."
                 : "마피아를 모두 찾아냈습니다. 시민 팀 승리!");
@@ -405,7 +501,7 @@ public class GameService {
         }
     }
 
-    // 내부
+    // 내부로직
 
     private void assignRoles(Room room) {
         List<Player> list = new ArrayList<>(room.getPlayers().values());
@@ -461,9 +557,10 @@ public class GameService {
     }
 
     private boolean isInGame(Room room) {
-        return room.getPhase() == Phase.NIGHT
-                || room.getPhase() == Phase.DAY_DISCUSS
-                || room.getPhase() == Phase.DAY_VOTE;
+        return switch (room.getPhase()) {
+            case NIGHT, DAY_DISCUSS, DAY_VOTE, DEFENSE, FINAL_VOTE -> true;
+            default -> false;
+        };
     }
 
     private Room getRoom(String roomId) {
@@ -497,10 +594,11 @@ public class GameService {
         return text.length() > 200 ? text.substring(0, 200) : text;
     }
 
-    // 메세지 전송
+    // 메세지 전송 로직
 
     private void broadcastState(Room room) {
         boolean reveal = room.getPhase() == Phase.END;
+        boolean finalPhase = room.getPhase() == Phase.FINAL_VOTE;
         Player host = room.getPlayers().get(room.getHostPid());
 
         List<Map<String, Object>> players = new ArrayList<>();
@@ -522,6 +620,9 @@ public class GameService {
         data.put("hostId", host == null ? null : host.getId());
         data.put("players", players);
         data.put("voteCounts", room.getPhase() == Phase.DAY_VOTE ? tally(room.getVotes()) : Map.of());
+        data.put("accusedId", room.getAccusedId());
+        data.put("finalVoted", finalPhase ? room.getFinalVotes().size() : 0);
+        data.put("finalEligible", finalPhase ? Math.max(0, room.alivePlayers().size() - 1) : 0);
         data.put("winner", room.getWinner());
         broadcast(room, "STATE", data);
     }
@@ -543,6 +644,15 @@ public class GameService {
                 "system", system,
                 "at", System.currentTimeMillis());
         room.playersByRole(Role.MAFIA).forEach(m -> sendPrivate(m, "MAFIA_CHAT", data));
+    }
+
+    private void sendToDead(Room room, String from, String text, boolean system) {
+        Map<String, Object> data = Map.of(
+                "from", from,
+                "text", text,
+                "system", system,
+                "at", System.currentTimeMillis());
+        room.deadPlayers().forEach(p -> sendPrivate(p, "DEAD_CHAT", data));
     }
 
     private void system(Room room, String text) {

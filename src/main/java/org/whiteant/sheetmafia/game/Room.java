@@ -3,7 +3,11 @@ package org.whiteant.sheetmafia.game;
 import lombok.Getter;
 import lombok.Setter;
 
-import java.util.*;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ScheduledFuture;
 
 @Getter
@@ -11,7 +15,7 @@ import java.util.concurrent.ScheduledFuture;
 public class Room {
 
     private final String id;
-    private final Map<String, Player> players = new LinkedHashMap<>();
+    private final Map<String, Player> players = new LinkedHashMap<>(); // pid -> player
 
     private String hostPid;
     private Phase phase = Phase.WAITING;
@@ -21,10 +25,13 @@ public class Room {
     private ScheduledFuture<?> timer;
     private Role winner;
 
-    private final Map<String, String> votes = new HashMap<>();
-    private final Map<String, String> mafiaTargets = new HashMap<>();
+    private final Map<String, String> votes = new HashMap<>();        // voterPid -> targetId
+    private final Map<String, String> mafiaTargets = new HashMap<>(); // mafiaPid -> targetId
     private String doctorTarget;
     private String policeTarget;
+
+    private String accusedId;                                          // 최후의 변론 대상 (공개 id)
+    private final Map<String, Boolean> finalVotes = new HashMap<>();   // voterPid -> 찬성 여부
 
     public Room(String id) {
         this.id = id;
@@ -43,8 +50,11 @@ public class Room {
         return players.values().stream().filter(Player::isAlive).toList();
     }
 
+    public List<Player> deadPlayers() {
+        return players.values().stream().filter(p -> !p.isAlive()).toList();
+    }
+
     public List<Player> playersByRole(Role role) {
         return players.values().stream().filter(p -> p.getRole() == role).toList();
     }
-
 }

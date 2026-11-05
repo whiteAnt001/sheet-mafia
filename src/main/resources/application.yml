@@ -5,5 +5,7 @@ game:
   night-seconds: 60
   discuss-seconds: 180
   vote-seconds: 60
+  defense-seconds: 30
+  final-vote-seconds: 20
   min-players: 4
   max-players: 8

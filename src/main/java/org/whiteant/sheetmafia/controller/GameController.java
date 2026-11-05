@@ -43,6 +43,11 @@ public class GameController {
         gameService.mafiaChat(roomId, principal.getName(), msg.content());
     }
 
+    @MessageMapping("/room/{roomId}/dead-chat")
+    public void deadChat(@DestinationVariable String roomId, @Payload ClientMessage msg, Principal principal) {
+        gameService.deadChat(roomId, principal.getName(), msg.content());
+    }
+
     @MessageMapping("/room/{roomId}/night")
     public void night(@DestinationVariable String roomId, @Payload ClientMessage msg, Principal principal) {
         gameService.nightAction(roomId, principal.getName(), msg.target());
@@ -51,6 +56,11 @@ public class GameController {
     @MessageMapping("/room/{roomId}/vote")
     public void vote(@DestinationVariable String roomId, @Payload ClientMessage msg, Principal principal) {
         gameService.vote(roomId, principal.getName(), msg.target());
+    }
+
+    @MessageMapping("/room/{roomId}/final-vote")
+    public void finalVote(@DestinationVariable String roomId, @Payload ClientMessage msg, Principal principal) {
+        gameService.finalVote(roomId, principal.getName(), msg.agree());
     }
 
     @MessageMapping("/room/{roomId}/boss")
